@@ -9,6 +9,13 @@ export interface Character {
   bio: string;
 }
 
+export interface Review {
+  id: number;
+  user: string;
+  rating: number; // 1-5
+  comment: string;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -18,6 +25,13 @@ export interface Product {
   assetUrl: string;
   imageUrl: string;
   unlockLevel?: number;
+  reviews: Review[];
+}
+
+export interface UserProfile {
+  name: string;
+  avatar: string; // URL to the avatar image
+  gallery: string[]; // Array of URLs for gallery images
 }
 
 export interface GameState {
@@ -32,4 +46,7 @@ export interface GameState {
   badges: string[];
   cart: Product[];
   library: Product[];
+  profile: UserProfile;
+  theme: 'light' | 'dark';
+  products: Product[];
 }

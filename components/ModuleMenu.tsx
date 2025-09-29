@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { YOGA_MODULES } from '../services/geminiService';
 import { CheckCircleIcon, PlayCircleIcon, LockClosedIcon, CloseIcon } from './icons';
@@ -15,17 +17,17 @@ const ModuleMenu: React.FC<ModuleMenuProps> = ({ isOpen, onClose, currentModuleI
   return (
     <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
       <div 
-        className="fixed inset-0 bg-black/60 animate-fade-in-backdrop" 
+        className="fixed inset-0 bg-black/70 animate-fade-in-backdrop" 
         onClick={onClose}
         aria-hidden="true"
       ></div>
 
-      <div className="relative w-full max-w-md bg-amber-50 shadow-xl flex flex-col animate-slide-in-left">
-        <div className="p-4 border-b border-stone-300 flex justify-between items-center">
-          <h2 className="font-title text-3xl text-emerald-700">Training Modules</h2>
+      <div className="relative w-full max-w-md bg-white dark:bg-gray-900 shadow-xl flex flex-col animate-slide-in-left">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
+          <h2 className="font-bold text-2xl text-gray-900 dark:text-white">Training Modules</h2>
           <button 
             onClick={onClose} 
-            className="p-2 rounded-full hover:bg-stone-200"
+            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
             aria-label="Close menu"
           >
             <CloseIcon />
@@ -39,21 +41,23 @@ const ModuleMenu: React.FC<ModuleMenuProps> = ({ isOpen, onClose, currentModuleI
                     const isCurrent = index === currentModuleIndex;
                     
                     let statusIcon;
-                    let textClass = "text-stone-700";
+                    let textClass = "text-gray-800 dark:text-gray-300";
+                    let bgClass = isCurrent ? "bg-gray-100 dark:bg-gray-800" : "";
+
 
                     if (isCompleted) {
                         statusIcon = <CheckCircleIcon />;
-                        textClass = "text-stone-500 line-through";
+                        textClass = "text-gray-500 dark:text-gray-500 line-through";
                     } else if (isCurrent) {
                         statusIcon = <PlayCircleIcon />;
-                        textClass = "font-bold text-sky-600";
+                        textClass = "font-bold text-blue-600 dark:text-blue-400";
                     } else {
                         statusIcon = <LockClosedIcon />;
-                        textClass = "text-stone-400";
+                        textClass = "text-gray-400 dark:text-gray-600";
                     }
 
                     return (
-                        <li key={index} className="flex items-center gap-3 p-2 rounded-md bg-stone-100/50">
+                        <li key={index} className={`flex items-center gap-3 p-2 rounded-md ${bgClass}`}>
                             <div className="flex-shrink-0">{statusIcon}</div>
                             <span className={textClass}>{moduleName}</span>
                         </li>

@@ -1,43 +1,130 @@
+"use client";
+
 import React, { useState, useEffect, useCallback } from 'react';
 import GameScreen from './components/GameScreen';
 import SidePanel from './components/SidePanel';
 import SplashPage from './components/SplashPage';
 import Dashboard from './components/Dashboard';
-import Header from './components/Header';
+import TransparentHeader from './components/TransparentHeader';
 import ModuleMenu from './components/ModuleMenu';
-import NavigationMenu from './components/NavigationMenu';
 import Store from './components/Store';
 import ShoppingCart from './components/ShoppingCart';
 import Library from './components/Library';
 import MediaPlayer from './components/MediaPlayer';
+import ProfilePage from './components/ProfilePage';
+import EditProfileModal from './components/EditProfileModal';
+import ReviewModal from './components/ReviewModal';
+import ViewReviewsModal from './components/ViewReviewsModal';
 import { generateInitialStory, generateNextStep, generateImageForStory, YOGA_MODULES } from './services/geminiService';
 import type { StoryStep } from './services/geminiService';
-import type { GameState, Product } from './types';
+import type { GameState, Product, Review } from './types';
+import { products as productsData } from './data/products';
 
-export type View = 'splash' | 'journey' | 'dashboard' | 'store' | 'cart' | 'library';
+export type View = 'splash' | 'journey' | 'dashboard' | 'store' | 'cart' | 'library' | 'profile';
+type Theme = 'light' | 'dark';
 
 const App: React.FC = () => {
-  const [gameState, setGameState] = useState<GameState>({
-    story: '',
-    image: '',
-    inventory: [],
-    relationships: {},
-    log: [],
-    isGameOver: false,
-    history: [],
-    currentModuleIndex: 0,
-    badges: [],
-    cart: [],
-    library: [],
+  const [gameState, setGameState] = useState<GameState>(() => {
+    const savedTheme = localStorage.getItem('theme') as Theme | null;
+    return {
+        story: '',
+        image: '',
+        inventory: [],
+        relationships: {},
+        log: [],
+        isGameOver: false,
+        history: [],
+        currentModuleIndex: 0,
+        badges: [],
+        cart: [],
+        library: [],
+        profile: {
+            name: 'Wellness Warrior',
+            avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=600',
+            gallery: [
+                'https://images.pexels.com/photos/1882092/pexels-photo-1882092.jpeg?auto=compress&cs=tinysrgb&w=600',
+                'https://images.pexels.com/photos/936615/pexels-photo-936615.jpeg?auto=compress&cs=tinysrgb&w=600',
+                'https://images.pexels.com/photos/3775566/pexels-photo-3775566.jpeg?auto=compress&cs=tinysrgb&w=600',
+            ],
+        },
+        theme: savedTheme || 'light',
+        products: productsData,
+    }
   });
   const [isStoryLoading, setIsStoryLoading] = useState(true);
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<View>('splash');
   const [isModuleMenuOpen, setIsModuleMenuOpen] = useState(false);
-  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [mediaToPlay, setMediaToPlay] = useState<Product | null>(null);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [reviewProduct, setReviewProduct] = useState<Product | null>(null);
+  const [viewReviewsProduct, setViewReviewsProduct] = useState<Product | null>(null);
 
+
+  useEffect(() => {
+    localStorage.setItem('theme', gameState.theme);
+    if (gameState.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark:bg-gray-950', 'dark:text-gray-300');
+      document.body.classList.remove('bg-slate-100', 'text-gray-800');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.add('bg-slate-100', 'text-gray-800');
+      document.body.classList.remove('dark:bg-gray-950', 'dark:text-gray-300');
+    }
+  }, [gameState.theme]);
+
+  const fileToDataUri = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handleAvatarChange = async (file: File) => {
+    const dataUri = await fileToDataUri(file);
+    setGameState(prev => ({ ...prev, profile: { ...prev.profile, avatar: dataUri } }));
+  };
+
+  const handleAddToGallery = async (file: File) => {
+    const dataUri = await fileToDataUri(file);
+    setGameState(prev => ({ ...prev, profile: { ...prev.profile, gallery: [...prev.profile.gallery, dataUri] } }));
+  };
+  
+  const handleProfileSave = (newName: string) => {
+    setGameState(prev => ({...prev, profile: {...prev.profile, name: newName}}));
+    setIsEditProfileOpen(false);
+  };
+
+  const handleReviewSubmit = (productId: number, rating: number, comment: string) => {
+      const newReview: Review = {
+          id: Date.now(),
+          user: gameState.profile.name,
+          rating,
+          comment,
+      };
+
+      setGameState(prev => {
+          const updatedProducts = prev.products.map(p => {
+              if (p.id === productId) {
+                  return { ...p, reviews: [...p.reviews, newReview] };
+              }
+              return p;
+          });
+
+          const updatedLibrary = prev.library.map(p => {
+              if (p.id === productId) {
+                  return { ...p, reviews: [...p.reviews, newReview] };
+              }
+              return p;
+          });
+          
+          return { ...prev, products: updatedProducts, library: updatedLibrary };
+      });
+
+      setReviewProduct(null);
+  };
 
   const handleNewStoryStep = useCallback((step: StoryStep, action: string = "The journey begins...") => {
     setGameState(prev => {
@@ -171,18 +258,20 @@ const App: React.FC = () => {
 
   const handleNavigate = (view: View) => {
     setCurrentView(view);
-    setIsNavMenuOpen(false);
   }
+  
+  const handleSetTheme = (theme: Theme) => {
+      setGameState(prev => ({...prev, theme}));
+  };
 
   const renderView = () => {
     const mainContent = (
-      <>
-        {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 p-4 rounded-lg mb-6 text-center w-full">
-            {error}
-            </div>
-        )}
-        <div className="w-full max-w-7xl mx-auto">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 dark:bg-red-900/20 dark:border-red-500/30 dark:text-red-300 p-4 rounded-lg mb-6 text-center w-full">
+                {error}
+                </div>
+            )}
             {
                 {
                 'dashboard': <Dashboard 
@@ -213,22 +302,38 @@ const App: React.FC = () => {
                     </main>
                 ),
                 'store': <Store 
+                            products={gameState.products}
                             onAddToCart={handleAddToCart} 
                             ownedLibrary={gameState.library} 
                             cart={gameState.cart} 
                             currentModuleIndex={gameState.currentModuleIndex}
+                            onViewReviews={setViewReviewsProduct}
                          />,
                 'cart': <ShoppingCart cart={gameState.cart} onRemove={handleRemoveFromCart} onCheckout={handleCheckout} />,
                 'library': <Library 
                             library={gameState.library} 
                             onPlayMedia={setMediaToPlay}
                             currentModuleIndex={gameState.currentModuleIndex}
+                            onReview={setReviewProduct}
+                            onViewReviews={setViewReviewsProduct}
+                           />,
+                'profile': <ProfilePage 
+                             profile={gameState.profile}
+                             onAvatarChange={handleAvatarChange}
+                             onAddToGallery={handleAddToGallery}
+                             onEditProfile={() => setIsEditProfileOpen(true)}
+                             theme={gameState.theme}
+                             onSetTheme={handleSetTheme}
+                             stats={{
+                                modules: gameState.currentModuleIndex,
+                                badges: gameState.badges.length,
+                                libraryItems: gameState.library.length,
+                             }}
                            />,
                 'splash' : null,
                 }[currentView]
             }
         </div>
-      </>
     );
   
     if (currentView === 'splash') {
@@ -237,11 +342,10 @@ const App: React.FC = () => {
 
     return (
       <>
-        <Header 
-          onOpenNavMenu={() => setIsNavMenuOpen(true)} 
-          onOpenModuleMenu={() => setIsModuleMenuOpen(true)}
-          cartCount={gameState.cart.length}
+        <TransparentHeader 
           onNavigate={handleNavigate}
+          currentView={currentView}
+          cartCount={gameState.cart.length}
         />
         {mainContent}
       </>
@@ -249,20 +353,33 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen animate-fade-in ${currentView !== 'splash' ? 'p-4 sm:p-6 lg:p-8' : ''}`}>
+    <div className={`min-h-screen animate-fade-in`}>
        <ModuleMenu 
         isOpen={isModuleMenuOpen}
         onClose={() => setIsModuleMenuOpen(false)}
         currentModuleIndex={gameState.currentModuleIndex}
       />
-      <NavigationMenu 
-        isOpen={isNavMenuOpen}
-        onClose={() => setIsNavMenuOpen(false)}
-        onNavigate={handleNavigate}
-        currentView={currentView}
-        unlockLevel={gameState.currentModuleIndex}
-      />
       {mediaToPlay && <MediaPlayer product={mediaToPlay} onClose={() => setMediaToPlay(null)} />}
+      <EditProfileModal 
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        currentName={gameState.profile.name}
+        onSave={handleProfileSave}
+      />
+      {reviewProduct && (
+        <ReviewModal
+            product={reviewProduct}
+            onClose={() => setReviewProduct(null)}
+            onSubmit={handleReviewSubmit}
+            userName={gameState.profile.name}
+        />
+      )}
+      {viewReviewsProduct && (
+          <ViewReviewsModal
+            product={viewReviewsProduct}
+            onClose={() => setViewReviewsProduct(null)}
+          />
+      )}
       {renderView()}
     </div>
   );
